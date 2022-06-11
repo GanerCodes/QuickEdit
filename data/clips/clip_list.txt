@@ -1,0 +1,2 @@
+file '/home/ganer/Projects/Video_Audio/QuickEdit/data/clips/0.mp4'
+file '/home/ganer/Projects/Video_Audio/QuickEdit/data/clips/1.mp4'
