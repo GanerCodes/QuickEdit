@@ -2,12 +2,18 @@ add_library('minim')
 from minim import *
 
 from collections import OrderedDict
-import subprocess, threading, time, json, re, os
+import subprocess, threading, time, json, sys, re, os
+
+tmp_dir = "/tmp/QuickEdit"
+if not os.path.isdir(tmp_dir):
+    os.mkdir(tmp_dir)
+os.chdir(tmp_dir)
+
+original_video_filename = os.environ["quickedit_import_vid"]
+export_path = os.environ["quickedit_export_vid"]
 
 disable_export = False
 audio_ext = "mp3"
-original_video_filename = "target.mkv"
-
 ffmpeg_audio_info_command = "ffprobe -hide_banner -print_format json -show_format -show_streams -select_streams a {}"
 ffmpeg_frame_command = "ffmpeg -hide_banner -loglevel error -y -i {} -vf 'scale=128:-1:flags=neighbor,fps=60' -map 0:v:0 {}"
 ffmpeg_audio_command = "ffmpeg -hide_banner -loglevel error -y -i {} {}"
@@ -19,10 +25,12 @@ amixAudio = False
 playStartTime = playStartPos = frame_num = 0
 active_tracks, cuts = {}, {}
 
-base_directory = "./data"
+base_directory = os.path.join(tmp_dir, "data")
 image_directory = os.path.join(base_directory, "image")
 audio_directory = os.path.join(base_directory, "audio")
 clips_directory = os.path.join(base_directory, "clips")
+
+quote = lambda x: '"' + str(x) + '"'
 
 def init_frames():
     global frame_load_state, frame_list, frame_map, audio_map, minim
@@ -32,7 +40,7 @@ def init_frames():
     
     audio_tracks = json.loads(
         subprocess.check_output(
-            ffmpeg_audio_info_command.format(original_video_filename),
+            ffmpeg_audio_info_command.format(quote(original_video_filename)),
             shell=True).decode())
     
     audio_map = OrderedDict((
@@ -41,11 +49,11 @@ def init_frames():
      ) for i, stream in enumerate(audio_tracks['streams']))
     
     disable_export or os.system(ffmpeg_frame_command.format(
-        original_video_filename,
+        quote(original_video_filename),
         os.path.join(image_directory, "image_%06d.jpg")))
     
     frame_load_state = "Extracting audio"
-    disable_export or os.system(ffmpeg_audio_command.format(original_video_filename, ' '.join(
+    disable_export or os.system(ffmpeg_audio_command.format(quote(original_video_filename), ' '.join(
         "-vn -ac 2 -ar 48000 -f mp3 -map 0:a:{} {}".format(i, v) for i, v in enumerate(audio_map.values())
     )))
     
@@ -225,7 +233,7 @@ def keyPressed():
                 amix_pass = ""
             
             cmd = "ffmpeg -y -hide_banner -loglevel warning -i {}{} {}".format(
-                original_video_filename,
+                quote(original_video_filename),
                 amix_pass,
                 " ".join(
                     "-map 0:v {} -ss {} -t {} {}".format(
@@ -240,9 +248,9 @@ def keyPressed():
             f.write("\n".join("file '{}'".format(os.path.abspath(i)) for i in vid_paths))
             f.close()
             os.system("ffmpeg -hide_banner -loglevel warning -y -safe 0 -f concat -i {} -map 0:v {} {}".format(
-                file_list,
+                quote(file_list),
                 aud_list,
-                "output.mp4"))
+                quote(export_path)))
             frame_load_state = False
             print("Rendered")
         
