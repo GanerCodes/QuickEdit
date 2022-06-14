@@ -68,9 +68,19 @@ def init_frames():
     
     frame_load_state = "Loading audio"
     minim = Minim(this)
-    for k, v in audio_map.items():
+    
+    def load_song(k, v):
         audio_map[k] = minim.loadFile(v)
         audio_map[k].setGain(-8.0)
+
+    music_load_threads = []
+    for k, v in audio_map.items():
+        t = threading.Thread(target=load_song, args=(k, v))
+        music_load_threads.append(t)
+        t.start()
+    
+    while any(type(i) == str for i in audio_map.values()):
+        time.sleep(0.1)
     
     frame_load_state = None
 
